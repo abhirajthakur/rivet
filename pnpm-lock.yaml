@@ -207,12 +207,18 @@ importers:
 
   apps/worker:
     dependencies:
+      '@rivet/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@rivet/config':
         specifier: workspace:*
         version: link:../../packages/config
 
   packages/agent:
     dependencies:
+      '@rivet/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@rivet/contracts':
         specifier: workspace:*
         version: link:../contracts

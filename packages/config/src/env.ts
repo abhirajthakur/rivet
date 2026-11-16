@@ -14,6 +14,7 @@ export const workerEnvSchema = z.object({
   DATABASE_URL: nonEmptyUrl,
   REDIS_URL: nonEmptyUrl,
   OLLAMA_BASE_URL: nonEmptyUrl,
+  OLLAMA_MODEL: z.string().trim().min(1, 'must not be empty'),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

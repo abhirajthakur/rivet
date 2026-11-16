@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@rivet/ai": "workspace:*",
     "@rivet/contracts": "workspace:*",
     "@rivet/sandbox": "workspace:*",
     "@rivet/tools": "workspace:*"

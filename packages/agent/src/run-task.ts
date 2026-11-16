@@ -1,4 +1,5 @@
 import type { AgentTask, TaskPlan, TaskState, TaskStatus } from '@rivet/contracts';
+import type { AIProvider } from '@rivet/ai';
 import { DockerSandboxRunner } from '@rivet/sandbox';
 import {
   applyPatch,
@@ -20,20 +21,32 @@ export interface TaskStateStore {
 
 export interface AgentOperations {
   initialize(task: AgentTask, workspacePath: string, signal?: AbortSignal): Promise<void>;
-  createPlan(task: AgentTask, tools: AgentTaskTools, signal?: AbortSignal): Promise<TaskPlan>;
+  createPlan(
+    task: AgentTask,
+    tools: AgentTaskTools,
+    provider: AIProvider,
+    signal?: AbortSignal,
+  ): Promise<TaskPlan>;
   execute(
     task: AgentTask,
     plan: TaskPlan,
     tools: AgentTaskTools,
+    provider: AIProvider,
     signal?: AbortSignal,
   ): Promise<void>;
   runTests(
     task: AgentTask,
     plan: TaskPlan,
     tools: AgentTaskTools,
+    provider: AIProvider,
     signal?: AbortSignal,
   ): Promise<void>;
-  review(task: AgentTask, plan: TaskPlan, signal?: AbortSignal): Promise<void>;
+  review(
+    task: AgentTask,
+    plan: TaskPlan,
+    provider: AIProvider,
+    signal?: AbortSignal,
+  ): Promise<void>;
 }
 
 export interface AgentTaskTools {
@@ -58,6 +71,7 @@ export type AgentTaskRunResult =
 export interface RunAgentTaskInput {
   readonly task: AgentTask;
   readonly workspacePath: string;
+  readonly provider: AIProvider;
   readonly stateStore: TaskStateStore;
   readonly operations: AgentOperations;
   readonly signal?: AbortSignal;
@@ -113,20 +127,20 @@ export async function runAgentTask(input: RunAgentTaskInput): Promise<AgentTaskR
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('planning');
-    plan = await input.operations.createPlan(task, tools, input.signal);
+    plan = await input.operations.createPlan(task, tools, input.provider, input.signal);
     await input.stateStore.savePlan(plan);
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('executing');
-    await input.operations.execute(task, plan, tools, input.signal);
+    await input.operations.execute(task, plan, tools, input.provider, input.signal);
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('testing');
-    await input.operations.runTests(task, plan, tools, input.signal);
+    await input.operations.runTests(task, plan, tools, input.provider, input.signal);
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('reviewing');
-    await input.operations.review(task, plan, input.signal);
+    await input.operations.review(task, plan, input.provider, input.signal);
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('awaiting_approval');
