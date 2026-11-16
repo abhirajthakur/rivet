@@ -14,20 +14,20 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 600_000;
 const MAX_OUTPUT_TOKENS = 32_768;
 
-export interface OllamaProviderOptions {
-  readonly baseUrl: string;
-  readonly model: string;
-  readonly timeoutMs?: number;
-}
+export type OllamaProviderOptions = {
+  baseUrl: string;
+  model: string;
+  timeoutMs?: number;
+};
 
-interface OllamaChatResponse {
-  readonly model?: unknown;
-  readonly message?: { readonly content?: unknown; readonly tool_calls?: unknown };
-  readonly done_reason?: unknown;
-  readonly prompt_eval_count?: unknown;
-  readonly eval_count?: unknown;
-  readonly error?: unknown;
-}
+type OllamaChatResponse = {
+  model?: unknown;
+  message?: { content?: unknown; tool_calls?: unknown };
+  done_reason?: unknown;
+  prompt_eval_count?: unknown;
+  eval_count?: unknown;
+  error?: unknown;
+};
 
 export class OllamaProvider implements AIProvider {
   private readonly chatUrl: URL;
@@ -116,7 +116,7 @@ export class OllamaProvider implements AIProvider {
 
   private chat(
     input: GenerateTextInput,
-    format?: Readonly<Record<string, unknown>>,
+    format?: Record<string, unknown>,
   ): Promise<OllamaChatResponse> {
     const userPrompt = nonEmpty(input.userPrompt, 'userPrompt');
     const temperature = boundedNumber(input.temperature, 0, 2, 'temperature');

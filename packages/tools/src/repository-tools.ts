@@ -56,28 +56,28 @@ const TEXT_EXTENSIONS = new Set([
 
 const TEXT_FILENAMES = new Set(['Dockerfile', 'Makefile', 'LICENSE', 'NOTICE']);
 
-export interface ListFilesOutput {
-  readonly files: readonly string[];
-  readonly truncated: boolean;
-}
+export type ListFilesOutput = {
+  files: string[];
+  truncated: boolean;
+};
 
-export interface ReadFileOutput {
-  readonly path: string;
-  readonly content: string;
-  readonly sizeBytes: number;
-  readonly truncated: boolean;
-}
+export type ReadFileOutput = {
+  path: string;
+  content: string;
+  sizeBytes: number;
+  truncated: boolean;
+};
 
-export interface CodeMatch {
-  readonly path: string;
-  readonly line: number;
-  readonly excerpt: string;
-}
+export type CodeMatch = {
+  path: string;
+  line: number;
+  excerpt: string;
+};
 
-export interface SearchCodeOutput {
-  readonly matches: readonly CodeMatch[];
-  readonly truncated: boolean;
-}
+export type SearchCodeOutput = {
+  matches: CodeMatch[];
+  truncated: boolean;
+};
 
 export async function listFiles(
   workspace: Workspace,

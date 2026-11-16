@@ -62,31 +62,31 @@ export interface AgentOperations {
   ): Promise<void>;
 }
 
-export interface AgentTaskTools {
-  readonly workspace: Workspace;
-  readonly listFiles: (input: unknown) => ReturnType<typeof listFiles>;
-  readonly readFile: (input: unknown) => ReturnType<typeof readFile>;
-  readonly searchCode: (input: unknown) => ReturnType<typeof searchCode>;
-  readonly writeFile: (input: unknown) => ReturnType<typeof writeFile>;
-  readonly applyPatch: (input: unknown) => ReturnType<typeof applyPatch>;
-  readonly runCommand: (input: unknown, signal?: AbortSignal) => Promise<RunCommandResult>;
-  readonly runToolLoop: (input: AgentTaskToolLoopInput) => Promise<AgentToolLoopResult>;
-}
+export type AgentTaskTools = {
+  workspace: Workspace;
+  listFiles: (input: unknown) => ReturnType<typeof listFiles>;
+  readFile: (input: unknown) => ReturnType<typeof readFile>;
+  searchCode: (input: unknown) => ReturnType<typeof searchCode>;
+  writeFile: (input: unknown) => ReturnType<typeof writeFile>;
+  applyPatch: (input: unknown) => ReturnType<typeof applyPatch>;
+  runCommand: (input: unknown, signal?: AbortSignal) => Promise<RunCommandResult>;
+  runToolLoop: (input: AgentTaskToolLoopInput) => Promise<AgentToolLoopResult>;
+};
 
 export type AgentTaskRunResult =
-  | { readonly outcome: 'awaiting_approval'; readonly task: AgentTask; readonly plan: TaskPlan }
-  | { readonly outcome: 'cancelled'; readonly task: AgentTask }
-  | { readonly outcome: 'failed'; readonly task: AgentTask; readonly error: string }
-  | { readonly outcome: 'rejected'; readonly task: AgentTask; readonly error: string };
+  | { outcome: 'awaiting_approval'; task: AgentTask; plan: TaskPlan }
+  | { outcome: 'cancelled'; task: AgentTask }
+  | { outcome: 'failed'; task: AgentTask; error: string }
+  | { outcome: 'rejected'; task: AgentTask; error: string };
 
-export interface RunAgentTaskInput {
-  readonly task: AgentTask;
-  readonly workspacePath: string;
-  readonly provider: AIProvider;
-  readonly stateStore: TaskStateStore;
-  readonly operations: AgentOperations;
-  readonly signal?: AbortSignal;
-}
+export type RunAgentTaskInput = {
+  task: AgentTask;
+  workspacePath: string;
+  provider: AIProvider;
+  stateStore: TaskStateStore;
+  operations: AgentOperations;
+  signal?: AbortSignal;
+};
 
 export async function runAgentTask(input: RunAgentTaskInput): Promise<AgentTaskRunResult> {
   let task = input.task;

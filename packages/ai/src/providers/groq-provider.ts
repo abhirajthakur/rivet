@@ -8,11 +8,11 @@ import type {
 } from '../provider.js';
 import type { GenerateTextOutput, ModelInfo } from '../provider.js';
 
-export interface GroqProviderOptions {
-  readonly apiKey: string;
-  readonly model: string;
-  readonly timeoutMs?: number;
-}
+export type GroqProviderOptions = {
+  apiKey: string;
+  model: string;
+  timeoutMs?: number;
+};
 
 export class GroqProvider implements AIProvider {
   private readonly provider: OpenAICompatibleProvider;

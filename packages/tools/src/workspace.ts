@@ -1,9 +1,9 @@
 import { lstat, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-export interface Workspace {
-  readonly rootDirectory: string;
-}
+export type Workspace = {
+  rootDirectory: string;
+};
 
 export type WorkspaceToolErrorCode =
   | 'invalid_input'
@@ -16,19 +16,19 @@ export type WorkspaceToolErrorCode =
   | 'patch_failed'
   | 'io_error';
 
-export interface WorkspaceTarget {
-  readonly absolutePath: string;
-  readonly exists: boolean;
-  readonly mode: number;
-}
+export type WorkspaceTarget = {
+  absolutePath: string;
+  exists: boolean;
+  mode: number;
+};
 
 export class WorkspaceToolError extends Error {
-  constructor(
-    readonly code: WorkspaceToolErrorCode,
-    message: string,
-  ) {
+  code: WorkspaceToolErrorCode;
+
+  constructor(code: WorkspaceToolErrorCode, message: string) {
     super(message);
     this.name = 'WorkspaceToolError';
+    this.code = code;
   }
 }
 

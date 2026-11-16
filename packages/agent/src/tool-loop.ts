@@ -23,61 +23,61 @@ const HARD_MAX_OUTPUT_TOKENS = 8_192;
 export type AgentToolLoopErrorCode = 'cancelled' | 'limit_exceeded';
 
 export class AgentToolLoopError extends Error {
-  constructor(
-    readonly code: AgentToolLoopErrorCode,
-    message: string,
-  ) {
+  code: AgentToolLoopErrorCode;
+
+  constructor(code: AgentToolLoopErrorCode, message: string) {
     super(message);
     this.name = 'AgentToolLoopError';
+    this.code = code;
   }
 }
 
-export interface AgentToolLoopLimits {
-  readonly maxTurns?: number;
-  readonly maxToolCalls?: number;
-  readonly maxDurationMs?: number;
-  readonly maxToolResultBytes?: number;
-  readonly maxContextBytes?: number;
-  readonly maxOutputTokens?: number;
-}
+export type AgentToolLoopLimits = {
+  maxTurns?: number;
+  maxToolCalls?: number;
+  maxDurationMs?: number;
+  maxToolResultBytes?: number;
+  maxContextBytes?: number;
+  maxOutputTokens?: number;
+};
 
-export interface AgentToolCallEvent {
-  readonly callId: string;
-  readonly name: string;
-  readonly arguments: unknown;
-  readonly result: string;
-  readonly succeeded: boolean;
-  readonly durationMs: number;
-}
+export type AgentToolCallEvent = {
+  callId: string;
+  name: string;
+  arguments: unknown;
+  result: string;
+  succeeded: boolean;
+  durationMs: number;
+};
 
-export interface AgentToolCallStartEvent {
-  readonly callId: string;
-  readonly name: string;
-  readonly arguments: unknown;
-}
+export type AgentToolCallStartEvent = {
+  callId: string;
+  name: string;
+  arguments: unknown;
+};
 
-export interface RunAgentToolLoopInput {
-  readonly provider: AIProvider;
-  readonly tools: AgentToolSet;
-  readonly systemPrompt: string;
-  readonly userPrompt: string;
-  readonly limits?: AgentToolLoopLimits;
-  readonly signal?: AbortSignal;
-  readonly onToolCallStart?: (event: AgentToolCallStartEvent) => Promise<void> | void;
-  readonly onToolCall?: (event: AgentToolCallEvent) => Promise<void> | void;
-}
+export type RunAgentToolLoopInput = {
+  provider: AIProvider;
+  tools: AgentToolSet;
+  systemPrompt: string;
+  userPrompt: string;
+  limits?: AgentToolLoopLimits;
+  signal?: AbortSignal;
+  onToolCallStart?: (event: AgentToolCallStartEvent) => Promise<void> | void;
+  onToolCall?: (event: AgentToolCallEvent) => Promise<void> | void;
+};
 
 export type AgentTaskToolLoopInput = Omit<
   RunAgentToolLoopInput,
   'provider' | 'tools' | 'onToolCall' | 'onToolCallStart'
 >;
 
-export interface AgentToolLoopResult {
-  readonly finalMessage: string | null;
-  readonly turnCount: number;
-  readonly toolCallCount: number;
-  readonly durationMs: number;
-}
+export type AgentToolLoopResult = {
+  finalMessage: string | null;
+  turnCount: number;
+  toolCallCount: number;
+  durationMs: number;
+};
 
 export async function runAgentToolLoop(input: RunAgentToolLoopInput): Promise<AgentToolLoopResult> {
   const startedAt = Date.now();

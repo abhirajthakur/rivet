@@ -1,6 +1,6 @@
 import type { TaskState, TaskStatus } from '@rivet/contracts';
 
-const ALLOWED_TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
+const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   pending: ['queued', 'cancelled'],
   queued: ['initializing', 'cancelled'],
   initializing: ['planning', 'failed', 'cancelled'],
@@ -17,8 +17,7 @@ const ALLOWED_TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> =
 export type TaskTransitionError = 'invalid_transition';
 
 export type TaskTransitionResult =
-  | { readonly ok: true; readonly state: TaskState }
-  | { readonly ok: false; readonly error: TaskTransitionError };
+  { ok: true; state: TaskState } | { ok: false; error: TaskTransitionError };
 
 export function canTransitionTask(from: TaskStatus, to: TaskStatus): boolean {
   return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false;

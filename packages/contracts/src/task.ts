@@ -14,16 +14,16 @@ export const TASK_STATUSES = [
 
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
-export interface TaskState {
-  readonly id: string;
-  readonly status: TaskStatus;
-  readonly attempt: number;
-  readonly updatedAt: string;
-}
+export type TaskState = {
+  id: string;
+  status: TaskStatus;
+  attempt: number;
+  updatedAt: string;
+};
 
 export interface AgentTask extends TaskState {
-  readonly description: string;
-  readonly createdAt: string;
+  description: string;
+  createdAt: string;
 }
 
 export const PLAN_STEP_STATUSES = [
@@ -36,17 +36,17 @@ export const PLAN_STEP_STATUSES = [
 
 export type PlanStepStatus = (typeof PLAN_STEP_STATUSES)[number];
 
-export interface TaskPlanStep {
-  readonly id: string;
-  readonly title: string;
-  readonly instruction: string;
-  readonly status: PlanStepStatus;
-}
+export type TaskPlanStep = {
+  id: string;
+  title: string;
+  instruction: string;
+  status: PlanStepStatus;
+};
 
-export interface TaskPlan {
-  readonly taskId: string;
-  readonly revision: number;
-  readonly summary: string;
-  readonly steps: readonly TaskPlanStep[];
-  readonly createdAt: string;
-}
+export type TaskPlan = {
+  taskId: string;
+  revision: number;
+  summary: string;
+  steps: TaskPlanStep[];
+  createdAt: string;
+};

@@ -8,15 +8,15 @@ import { resolveWorkspaceTarget, WorkspaceToolError, type Workspace } from './wo
 
 const MAX_EDITABLE_FILE_BYTES = 1024 * 1024;
 
-export interface FileWriteResult {
-  readonly path: string;
-  readonly created: boolean;
-  readonly bytesWritten: number;
-  readonly sha256: string;
-}
+export type FileWriteResult = {
+  path: string;
+  created: boolean;
+  bytesWritten: number;
+  sha256: string;
+};
 
 export interface ApplyPatchResult extends FileWriteResult {
-  readonly patchesApplied: number;
+  patchesApplied: number;
 }
 
 export async function writeFile(workspace: Workspace, input: unknown): Promise<FileWriteResult> {
@@ -114,7 +114,7 @@ export async function applyPatch(workspace: Workspace, input: unknown): Promise<
 
 async function readEditableFile(
   absolutePath: string,
-): Promise<{ readonly content: string; readonly sha256: string }> {
+): Promise<{ content: string; sha256: string }> {
   let handle: FileHandle | undefined;
   try {
     handle = await open(absolutePath, 'r');

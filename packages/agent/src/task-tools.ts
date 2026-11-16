@@ -8,20 +8,20 @@ import type {
   SearchCodeOutput,
 } from '@rivet/tools';
 
-export interface AgentToolSet {
-  readonly listFiles: (input: unknown) => Promise<ListFilesOutput>;
-  readonly readFile: (input: unknown) => Promise<ReadFileOutput>;
-  readonly searchCode: (input: unknown) => Promise<SearchCodeOutput>;
-  readonly writeFile: (input: unknown) => Promise<FileWriteResult>;
-  readonly applyPatch: (input: unknown) => Promise<ApplyPatchResult>;
-  readonly runCommand: (input: unknown, signal?: AbortSignal) => Promise<RunCommandResult>;
-}
+export type AgentToolSet = {
+  listFiles: (input: unknown) => Promise<ListFilesOutput>;
+  readFile: (input: unknown) => Promise<ReadFileOutput>;
+  searchCode: (input: unknown) => Promise<SearchCodeOutput>;
+  writeFile: (input: unknown) => Promise<FileWriteResult>;
+  applyPatch: (input: unknown) => Promise<ApplyPatchResult>;
+  runCommand: (input: unknown, signal?: AbortSignal) => Promise<RunCommandResult>;
+};
 
 export interface ExecutableAgentTool extends AIToolDefinition {
   execute(input: unknown, signal?: AbortSignal): Promise<unknown>;
 }
 
-export function createTaskTools(tools: AgentToolSet): readonly ExecutableAgentTool[] {
+export function createTaskTools(tools: AgentToolSet): ExecutableAgentTool[] {
   return [
     {
       name: 'list_files',

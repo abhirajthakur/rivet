@@ -9,33 +9,33 @@ import { isWithin, toPosix } from './path-helpers.js';
 
 const IMAGE = 'rivet-sandbox:node24';
 
-export interface RunCommandInput {
-  readonly command: readonly string[];
-  readonly cwd?: string;
-  readonly timeoutMs?: number;
-  readonly maxOutputBytes?: number;
-}
+export type RunCommandInput = {
+  command: string[];
+  cwd?: string;
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+};
 
-export interface RunCommandResult {
-  readonly command: readonly string[];
-  readonly exitCode: number | null;
-  readonly timedOut: boolean;
-  readonly cancelled: boolean;
-  readonly durationMs: number;
-  readonly stdout: string;
-  readonly stderr: string;
-  readonly outputTruncated: boolean;
-}
+export type RunCommandResult = {
+  command: string[];
+  exitCode: number | null;
+  timedOut: boolean;
+  cancelled: boolean;
+  durationMs: number;
+  stdout: string;
+  stderr: string;
+  outputTruncated: boolean;
+};
 
-export interface DockerSandboxOptions {
-  readonly workspacePath: string;
-  readonly runtimePath?: string;
-}
+export type DockerSandboxOptions = {
+  workspacePath: string;
+  runtimePath?: string;
+};
 
-interface ProcessResult {
-  readonly exitCode: number | null;
-  readonly signal: NodeJS.Signals | null;
-}
+type ProcessResult = {
+  exitCode: number | null;
+  signal: NodeJS.Signals | null;
+};
 
 export class DockerSandboxRunner {
   private constructor(
@@ -265,7 +265,7 @@ function isErrorCode(error: unknown, code: string): boolean {
 function emptyResult(
   options: ParsedRunCommandInput,
   startedAt: number,
-  result: { readonly cancelled?: boolean; readonly timedOut?: boolean },
+  result: { cancelled?: boolean; timedOut?: boolean },
 ): RunCommandResult {
   return {
     command: options.command,

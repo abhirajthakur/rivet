@@ -1,76 +1,76 @@
-export interface ModelInfo {
-  readonly provider: string;
-  readonly model: string;
-  readonly execution: 'self_hosted' | 'hosted';
-}
+export type ModelInfo = {
+  provider: string;
+  model: string;
+  execution: 'self_hosted' | 'hosted';
+};
 
-export interface GenerateTextInput {
-  readonly systemPrompt?: string;
-  readonly userPrompt: string;
-  readonly temperature?: number;
-  readonly maxOutputTokens?: number;
-  readonly signal?: AbortSignal;
-}
+export type GenerateTextInput = {
+  systemPrompt?: string;
+  userPrompt: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+  signal?: AbortSignal;
+};
 
-export interface GenerateTextOutput {
-  readonly text: string;
-  readonly model: string;
-  readonly finishReason: string | null;
-  readonly inputTokens: number | null;
-  readonly outputTokens: number | null;
-}
+export type GenerateTextOutput = {
+  text: string;
+  model: string;
+  finishReason: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+};
 
-export interface StructuredOutputSchema<T> {
-  readonly name: string;
-  readonly jsonSchema: Readonly<Record<string, unknown>>;
+export type StructuredOutputSchema<T> = {
+  name: string;
+  jsonSchema: Record<string, unknown>;
   parse(value: unknown): T;
-}
+};
 
-export interface GenerateStructuredInput<T> extends Omit<GenerateTextInput, 'maxOutputTokens'> {
-  readonly schema: StructuredOutputSchema<T>;
-  readonly maxOutputTokens?: number;
-}
+export type GenerateStructuredInput<T> = Omit<GenerateTextInput, 'maxOutputTokens'> & {
+  schema: StructuredOutputSchema<T>;
+  maxOutputTokens?: number;
+};
 
-export interface AIToolDefinition {
-  readonly name: string;
-  readonly description: string;
-  readonly inputSchema: Readonly<Record<string, unknown>>;
-}
+export type AIToolDefinition = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+};
 
-export interface AIToolCall {
-  readonly id: string;
-  readonly name: string;
-  readonly arguments: unknown;
-}
+export type AIToolCall = {
+  id: string;
+  name: string;
+  arguments: unknown;
+};
 
 export type AIConversationMessage =
-  | { readonly role: 'system' | 'user'; readonly content: string }
+  | { role: 'system' | 'user'; content: string }
   | {
-      readonly role: 'assistant';
-      readonly content: string | null;
-      readonly toolCalls?: readonly AIToolCall[];
+      role: 'assistant';
+      content: string | null;
+      toolCalls?: AIToolCall[];
     }
   | {
-      readonly role: 'tool';
-      readonly toolCallId: string;
-      readonly name: string;
-      readonly content: string;
+      role: 'tool';
+      toolCallId: string;
+      name: string;
+      content: string;
     };
 
-export interface GenerateToolTurnInput {
-  readonly messages: readonly AIConversationMessage[];
-  readonly tools: readonly AIToolDefinition[];
-  readonly temperature?: number;
-  readonly maxOutputTokens?: number;
-  readonly signal?: AbortSignal;
-}
+export type GenerateToolTurnInput = {
+  messages: AIConversationMessage[];
+  tools: AIToolDefinition[];
+  temperature?: number;
+  maxOutputTokens?: number;
+  signal?: AbortSignal;
+};
 
-export interface GenerateToolTurnOutput {
-  readonly content: string | null;
-  readonly toolCalls: readonly AIToolCall[];
-  readonly model: string;
-  readonly finishReason: string | null;
-}
+export type GenerateToolTurnOutput = {
+  content: string | null;
+  toolCalls: AIToolCall[];
+  model: string;
+  finishReason: string | null;
+};
 
 export interface AIProvider {
   getModelInfo(): ModelInfo;

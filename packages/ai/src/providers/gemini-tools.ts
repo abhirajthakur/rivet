@@ -2,9 +2,7 @@ import type { AIConversationMessage, AIToolCall, AIToolDefinition } from '../pro
 import { AIProviderError } from '../provider-error.js';
 import { isRecord, parseToolArguments, toolCallId } from '../tool-call-utils.js';
 
-export function toGeminiContents(
-  messages: readonly AIConversationMessage[],
-): Record<string, unknown>[] {
+export function toGeminiContents(messages: AIConversationMessage[]): Record<string, unknown>[] {
   return messages.flatMap((message) => {
     if (message.role === 'system') return [];
     if (message.role === 'user') {
@@ -37,9 +35,7 @@ export function toGeminiContents(
   });
 }
 
-export function toGeminiToolDeclarations(
-  tools: readonly AIToolDefinition[],
-): Record<string, unknown>[] {
+export function toGeminiToolDeclarations(tools: AIToolDefinition[]): Record<string, unknown>[] {
   return [
     {
       functionDeclarations: tools.map((tool) => ({

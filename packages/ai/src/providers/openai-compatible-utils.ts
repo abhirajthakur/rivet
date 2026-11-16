@@ -1,18 +1,18 @@
 import type { AIConversationMessage, AIToolDefinition, GenerateTextOutput } from '../provider.js';
 import { AIProviderError } from '../provider-error.js';
 
-export interface ChatCompletionResponse {
-  readonly model?: unknown;
-  readonly choices?: readonly {
-    readonly finish_reason?: unknown;
-    readonly message?: { readonly content?: unknown; readonly tool_calls?: unknown };
+export type ChatCompletionResponse = {
+  model?: unknown;
+  choices?: {
+    finish_reason?: unknown;
+    message?: { content?: unknown; tool_calls?: unknown };
   }[];
-  readonly usage?: {
-    readonly prompt_tokens?: unknown;
-    readonly completion_tokens?: unknown;
+  usage?: {
+    prompt_tokens?: unknown;
+    completion_tokens?: unknown;
   };
-  readonly error?: unknown;
-}
+  error?: unknown;
+};
 
 export function toOpenAIMessage(message: AIConversationMessage): Record<string, unknown> {
   if (message.role === 'tool') {

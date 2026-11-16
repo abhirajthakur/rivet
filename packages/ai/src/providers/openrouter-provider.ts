@@ -8,11 +8,11 @@ import type {
 } from '../provider.js';
 import type { GenerateTextOutput, ModelInfo } from '../provider.js';
 
-export interface OpenRouterProviderOptions {
-  readonly apiKey: string;
-  readonly model: string;
-  readonly timeoutMs?: number;
-}
+export type OpenRouterProviderOptions = {
+  apiKey: string;
+  model: string;
+  timeoutMs?: number;
+};
 
 export class OpenRouterProvider implements AIProvider {
   private readonly provider: OpenAICompatibleProvider;

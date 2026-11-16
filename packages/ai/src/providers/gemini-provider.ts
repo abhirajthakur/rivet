@@ -19,27 +19,27 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 600_000;
 const MAX_OUTPUT_TOKENS = 32_768;
 
-export interface GeminiProviderOptions {
-  readonly apiKey: string;
-  readonly model: string;
-  readonly timeoutMs?: number;
-}
+export type GeminiProviderOptions = {
+  apiKey: string;
+  model: string;
+  timeoutMs?: number;
+};
 
-interface GeminiResponse {
-  readonly modelVersion?: unknown;
-  readonly candidates?: readonly {
-    readonly content?: {
-      readonly parts?: readonly { readonly text?: unknown; readonly functionCall?: unknown }[];
+type GeminiResponse = {
+  modelVersion?: unknown;
+  candidates?: {
+    content?: {
+      parts?: { text?: unknown; functionCall?: unknown }[];
     };
-    readonly finishReason?: unknown;
+    finishReason?: unknown;
   }[];
-  readonly usageMetadata?: {
-    readonly promptTokenCount?: unknown;
-    readonly candidatesTokenCount?: unknown;
+  usageMetadata?: {
+    promptTokenCount?: unknown;
+    candidatesTokenCount?: unknown;
   };
-  readonly promptFeedback?: { readonly blockReason?: unknown };
-  readonly error?: unknown;
-}
+  promptFeedback?: { blockReason?: unknown };
+  error?: unknown;
+};
 
 export class GeminiProvider implements AIProvider {
   private readonly apiKey: string;
@@ -129,7 +129,7 @@ export class GeminiProvider implements AIProvider {
 
   private generate(
     input: GenerateTextInput,
-    responseJsonSchema?: Readonly<Record<string, unknown>>,
+    responseJsonSchema?: Record<string, unknown>,
   ): Promise<GeminiResponse> {
     const userPrompt = nonEmpty(input.userPrompt, 'userPrompt');
     const temperature = boundedNumber(input.temperature, 0, 2);

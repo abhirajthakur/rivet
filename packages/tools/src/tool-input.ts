@@ -1,37 +1,37 @@
 import { WorkspaceToolError } from './workspace.js';
 
-export interface ListFilesInput {
-  readonly path?: string;
-  readonly maxDepth?: number;
-  readonly maxEntries?: number;
-}
+export type ListFilesInput = {
+  path?: string;
+  maxDepth?: number;
+  maxEntries?: number;
+};
 
-export interface ReadFileInput {
-  readonly path: string;
-  readonly maxBytes?: number;
-}
+export type ReadFileInput = {
+  path: string;
+  maxBytes?: number;
+};
 
-export interface SearchCodeInput {
-  readonly query: string;
-  readonly maxMatches?: number;
-}
+export type SearchCodeInput = {
+  query: string;
+  maxMatches?: number;
+};
 
-export interface WriteFileInput {
-  readonly path: string;
-  readonly content: string;
-  readonly expectedSha256?: string;
-}
+export type WriteFileInput = {
+  path: string;
+  content: string;
+  expectedSha256?: string;
+};
 
-export interface TextPatch {
-  readonly find: string;
-  readonly replace: string;
-}
+export type TextPatch = {
+  find: string;
+  replace: string;
+};
 
-export interface ApplyPatchInput {
-  readonly path: string;
-  readonly expectedSha256: string;
-  readonly patches: readonly TextPatch[];
-}
+export type ApplyPatchInput = {
+  path: string;
+  expectedSha256: string;
+  patches: TextPatch[];
+};
 
 const MAX_ALLOWED_DEPTH = 8;
 const MAX_ALLOWED_ENTRIES = 2_000;
@@ -124,7 +124,7 @@ export function parseApplyPatchInput(input: unknown): ApplyPatchInput {
   return { path, expectedSha256, patches };
 }
 
-function asObject(input: unknown, allowedKeys: readonly string[]): Record<string, unknown> {
+function asObject(input: unknown, allowedKeys: string[]): Record<string, unknown> {
   if (input === null || typeof input !== 'object' || Array.isArray(input)) {
     throw new WorkspaceToolError('invalid_input', 'Tool input must be an object.');
   }

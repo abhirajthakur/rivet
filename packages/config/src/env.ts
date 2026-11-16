@@ -50,7 +50,7 @@ export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
 export function parseEnvironment<TSchema extends z.ZodType>(
   schema: TSchema,
-  source: Readonly<Record<string, string | undefined>> = process.env,
+  source: Record<string, string | undefined> = process.env,
 ): z.output<TSchema> {
   const result = schema.safeParse(source);
   if (!result.success) {
@@ -64,10 +64,10 @@ export function parseEnvironment<TSchema extends z.ZodType>(
   return result.data;
 }
 
-export function loadApiEnv(source?: Readonly<Record<string, string | undefined>>): ApiEnv {
+export function loadApiEnv(source?: Record<string, string | undefined>): ApiEnv {
   return parseEnvironment(apiEnvSchema, source);
 }
 
-export function loadWorkerEnv(source?: Readonly<Record<string, string | undefined>>): WorkerEnv {
+export function loadWorkerEnv(source?: Record<string, string | undefined>): WorkerEnv {
   return parseEnvironment(workerEnvSchema, source);
 }

@@ -23,13 +23,13 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 600_000;
 const MAX_OUTPUT_TOKENS = 32_768;
 
-export interface CompatibleProviderOptions {
-  readonly provider: 'groq' | 'openrouter';
-  readonly endpoint: string;
-  readonly apiKey: string;
-  readonly model: string;
-  readonly timeoutMs?: number;
-}
+export type CompatibleProviderOptions = {
+  provider: 'groq' | 'openrouter';
+  endpoint: string;
+  apiKey: string;
+  model: string;
+  timeoutMs?: number;
+};
 
 export class OpenAICompatibleProvider implements AIProvider {
   private readonly provider: 'groq' | 'openrouter';
@@ -123,7 +123,7 @@ export class OpenAICompatibleProvider implements AIProvider {
 
   private complete(
     input: GenerateTextInput,
-    schema?: Readonly<Record<string, unknown>>,
+    schema?: Record<string, unknown>,
     schemaName?: string,
   ): Promise<ChatCompletionResponse> {
     const userPrompt = nonEmpty(input.userPrompt, 'userPrompt');

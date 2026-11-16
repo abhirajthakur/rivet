@@ -7,12 +7,12 @@ const MAX_OUTPUT_BYTES = 512 * 1024;
 const MAX_COMMAND_ARGUMENTS = 64;
 const MAX_COMMAND_BYTES = 16 * 1024;
 
-export interface ParsedRunCommandInput {
-  readonly command: readonly string[];
-  readonly cwd: string;
-  readonly timeoutMs: number;
-  readonly maxOutputBytes: number;
-}
+export type ParsedRunCommandInput = {
+  command: string[];
+  cwd: string;
+  timeoutMs: number;
+  maxOutputBytes: number;
+};
 
 export function parseRunCommandInput(input: unknown): ParsedRunCommandInput {
   if (input === null || typeof input !== 'object' || Array.isArray(input)) {
