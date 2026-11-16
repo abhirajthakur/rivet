@@ -45,7 +45,11 @@ importers:
 
   apps/worker: {}
 
-  packages/agent: {}
+  packages/agent:
+    dependencies:
+      '@rivet/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/ai: {}
 
