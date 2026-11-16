@@ -3,11 +3,8 @@ export {
   readFile,
   searchCode,
   type CodeMatch,
-  type ListFilesInput,
   type ListFilesOutput,
-  type ReadFileInput,
   type ReadFileOutput,
-  type SearchCodeInput,
   type SearchCodeOutput,
 } from './repository-tools.js';
 export {
@@ -16,3 +13,4 @@ export {
   type Workspace,
   type WorkspaceToolErrorCode,
 } from './workspace.js';
+export type { ListFilesInput, ReadFileInput, SearchCodeInput } from './tool-input.js';

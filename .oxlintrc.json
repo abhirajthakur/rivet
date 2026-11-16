@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "warn",
+    "perf": "warn"
+  },
+  "plugins": ["eslint", "typescript", "oxc", "import"],
+  "rules": {
+    "eslint/no-console": ["error", { "allow": ["warn", "error"] }],
+    "eslint/no-debugger": "error",
+    "eslint/max-lines-per-function": "off",
+    "eslint/no-await-in-loop": "off",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error"
+  },
+  "ignorePatterns": ["node_modules", ".git", "dist", ".next", "coverage", ".pnpm-store"]
+}

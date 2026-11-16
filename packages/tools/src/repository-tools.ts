@@ -1,4 +1,5 @@
 import type { Dirent, Stats } from 'node:fs';
+import { parseListFilesInput, parseReadFileInput, parseSearchCodeInput } from './tool-input.js';
 import { open, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -8,16 +9,10 @@ import {
   type Workspace,
 } from './workspace.js';
 
-const DEFAULT_MAX_DEPTH = 4;
 const MAX_ALLOWED_DEPTH = 8;
-const DEFAULT_MAX_ENTRIES = 500;
-const MAX_ALLOWED_ENTRIES = 2_000;
 const DEFAULT_MAX_FILE_BYTES = 64 * 1024;
-const MAX_ALLOWED_FILE_BYTES = 256 * 1024;
 const MAX_SEARCH_TOTAL_BYTES = 4 * 1024 * 1024;
 const MAX_SEARCH_FILE_BYTES = 128 * 1024;
-const DEFAULT_MAX_MATCHES = 50;
-const MAX_ALLOWED_MATCHES = 200;
 const MAX_EXCERPT_LENGTH = 240;
 
 const IGNORED_DIRECTORIES = new Set([
@@ -56,12 +51,6 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 const TEXT_FILENAMES = new Set(['Dockerfile', 'Makefile', 'LICENSE', 'NOTICE']);
-
-export interface ListFilesInput {
-  readonly path?: string;
-  readonly maxDepth?: number;
-  readonly maxEntries?: number;
-}
 
 export interface ListFilesOutput {
   readonly files: readonly string[];
@@ -200,7 +189,7 @@ export async function searchCode(workspace: Workspace, input: unknown): Promise<
     bytesReadTotal += Math.min(result.sizeBytes, Math.min(MAX_SEARCH_FILE_BYTES, remainingBytes));
     truncated ||= result.truncated;
 
-    const lines = result.content.split(/\r?\n/);
+    const lines = result.content.split(/\r?\n/u);
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index];
       if (line?.toLowerCase().includes(query)) {
@@ -217,86 +206,6 @@ export async function searchCode(workspace: Workspace, input: unknown): Promise<
   }
 
   return { matches, truncated };
-}
-
-function parseListFilesInput(input: unknown): Required<ListFilesInput> {
-  const record = asObject(input, ['path', 'maxDepth', 'maxEntries']);
-  const requestedPath = optionalString(record, 'path');
-  const maxDepth = optionalInteger(record, 'maxDepth', MAX_ALLOWED_DEPTH);
-  const maxEntries = optionalInteger(record, 'maxEntries', MAX_ALLOWED_ENTRIES);
-
-  return {
-    path: requestedPath ?? '.',
-    maxDepth: maxDepth ?? DEFAULT_MAX_DEPTH,
-    maxEntries: maxEntries ?? DEFAULT_MAX_ENTRIES,
-  };
-}
-
-function parseReadFileInput(input: unknown): Required<ReadFileInput> {
-  const record = asObject(input, ['path', 'maxBytes']);
-  const requestedPath = requiredString(record, 'path');
-  const maxBytes = optionalInteger(record, 'maxBytes', MAX_ALLOWED_FILE_BYTES);
-  return { path: requestedPath, maxBytes: maxBytes ?? DEFAULT_MAX_FILE_BYTES };
-}
-
-function parseSearchCodeInput(input: unknown): Required<SearchCodeInput> {
-  const record = asObject(input, ['query', 'maxMatches']);
-  const query = requiredString(record, 'query');
-  if (query.length > 200) {
-    throw new WorkspaceToolError('invalid_input', 'Search query must be 200 characters or fewer.');
-  }
-
-  const maxMatches = optionalInteger(record, 'maxMatches', MAX_ALLOWED_MATCHES);
-  return { query, maxMatches: maxMatches ?? DEFAULT_MAX_MATCHES };
-}
-
-function asObject(input: unknown, allowedKeys: readonly string[]): Record<string, unknown> {
-  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
-    throw new WorkspaceToolError('invalid_input', 'Tool input must be an object.');
-  }
-
-  const record = input as Record<string, unknown>;
-  const unknownKey = Object.keys(record).find((key) => !allowedKeys.includes(key));
-  if (unknownKey) {
-    throw new WorkspaceToolError('invalid_input', `Unknown tool input field: ${unknownKey}.`);
-  }
-  return record;
-}
-
-function requiredString(record: Record<string, unknown>, key: string): string {
-  const value = record[key];
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new WorkspaceToolError(
-      'invalid_input',
-      `Tool input field "${key}" must be a non-empty string.`,
-    );
-  }
-  return value;
-}
-
-function optionalString(record: Record<string, unknown>, key: string): string | undefined {
-  const value = record[key];
-  if (value === undefined) return undefined;
-  if (typeof value !== 'string') {
-    throw new WorkspaceToolError('invalid_input', `Tool input field "${key}" must be a string.`);
-  }
-  return value;
-}
-
-function optionalInteger(
-  record: Record<string, unknown>,
-  key: string,
-  maximum: number,
-): number | undefined {
-  const value = record[key];
-  if (value === undefined) return undefined;
-  if (!Number.isInteger(value) || typeof value !== 'number' || value < 1 || value > maximum) {
-    throw new WorkspaceToolError(
-      'invalid_input',
-      `Tool input field "${key}" must be an integer from 1 to ${maximum}.`,
-    );
-  }
-  return value;
 }
 
 function isSecretFilename(filename: string): boolean {

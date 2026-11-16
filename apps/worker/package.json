@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "tsc",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rivet/config": "workspace:*"
   }
 }

@@ -4,28 +4,26 @@
   "private": true,
   "engines": {
     "node": ">=22.0.0",
-    "pnpm": ">=10.34.9"
+    "pnpm": ">=12.21.0"
   },
   "scripts": {
-    "lint": "corepack pnpm exec eslint .",
-    "lint:fix": "corepack pnpm exec eslint . --fix",
-    "format": "corepack pnpm exec prettier --write .",
-    "format:check": "corepack pnpm exec prettier --check .",
-    "typecheck": "corepack pnpm --recursive --if-present typecheck",
-    "check": "corepack pnpm lint && corepack pnpm format:check && corepack pnpm typecheck",
-    "prepare": "husky"
+    "lint": "pnpm exec oxlint",
+    "lint:fix": "pnpm exec oxlint --fix",
+    "format": "pnpm exec prettier --write .",
+    "format:check": "pnpm exec prettier --check .",
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck",
+    "prepare": "husky",
+    "build": "pnpm --recursive --sort --if-present build"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
-    "@eslint/js": "^10.0.1",
     "@types/node": "^24.19.2",
-    "eslint": "^10.15.0",
-    "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
+    "oxlint": "^1.93.0",
     "prettier": "^3.10.1",
-    "typescript": "^6.0.2",
-    "typescript-eslint": "^8.72.2"
+    "typescript": "^7.0.2"
   },
-  "packageManager": "pnpm@10.34.9"
+  "packageManager": "pnpm@12.21.0"
 }

@@ -8,6 +8,7 @@ Rivet is a local-first AI software engineering agent. It inspects a repository, 
 - `apps/worker` — background task worker (later milestone)
 - `packages/agent` — single-agent orchestration and lifecycle
 - `packages/ai` — provider abstraction and free/local model adapters
+- `packages/config` — validated server environment configuration
 - `packages/contracts` — shared request, response, and task schemas
 - `packages/database` — persistence and migrations
 - `packages/github` — GitHub integration
@@ -23,9 +24,7 @@ Rivet is a local-first AI software engineering agent. It inspects a repository, 
 ## Setup
 
 ```sh
-git init
-corepack enable
-corepack pnpm install
+pnpm install
 ```
 
 ## Commit messages
@@ -39,3 +38,9 @@ chore(repo): configure linting
 ```
 
 The `commit-msg` hook validates each commit message.
+
+## Environment configuration
+
+Server environment variables are validated by `@rivet/config` with Zod before API or worker startup. Required values are trimmed and rejected when missing or empty. Copy `.env.example` to `.env` for local development. Node.js loads the file with its native `--env-file=.env` option; Rivet does not use `dotenv`.
+
+The API requires `NODE_ENV`, `PORT`, `DATABASE_URL`, and `REDIS_URL`. The worker requires `NODE_ENV`, `DATABASE_URL`, `REDIS_URL`, and `OLLAMA_BASE_URL`.
