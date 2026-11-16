@@ -17,6 +17,10 @@ const MAX_EXCERPT_LENGTH = 240;
 
 const IGNORED_DIRECTORIES = new Set([
   '.git',
+  '.aws',
+  '.ssh',
+  '.secrets',
+  'secrets',
   'node_modules',
   '.next',
   'dist',
@@ -57,21 +61,11 @@ export interface ListFilesOutput {
   readonly truncated: boolean;
 }
 
-export interface ReadFileInput {
-  readonly path: string;
-  readonly maxBytes?: number;
-}
-
 export interface ReadFileOutput {
   readonly path: string;
   readonly content: string;
   readonly sizeBytes: number;
   readonly truncated: boolean;
-}
-
-export interface SearchCodeInput {
-  readonly query: string;
-  readonly maxMatches?: number;
 }
 
 export interface CodeMatch {
@@ -90,7 +84,7 @@ export async function listFiles(
   input: unknown = {},
 ): Promise<ListFilesOutput> {
   const options = parseListFilesInput(input);
-  assertReadablePath(options.path ?? '.');
+  assertWorkspacePathAllowed(options.path ?? '.');
   const startPath = await resolveWorkspacePath(workspace, options.path ?? '.');
   const startStats = await statWorkspacePath(startPath);
   if (!startStats.isDirectory()) {
@@ -137,7 +131,7 @@ export async function listFiles(
 
 export async function readFile(workspace: Workspace, input: unknown): Promise<ReadFileOutput> {
   const options = parseReadFileInput(input);
-  assertReadablePath(options.path);
+  assertWorkspacePathAllowed(options.path);
   const absolutePath = await resolveWorkspacePath(workspace, options.path);
   const fileStats = await statWorkspacePath(absolutePath);
   if (!fileStats.isFile()) {
@@ -209,10 +203,21 @@ export async function searchCode(workspace: Workspace, input: unknown): Promise<
 }
 
 function isSecretFilename(filename: string): boolean {
-  return filename === '.env' || filename.startsWith('.env.');
+  return (
+    filename === '.env' ||
+    filename.startsWith('.env.') ||
+    filename === '.npmrc' ||
+    filename === 'credentials.json' ||
+    filename === 'id_rsa' ||
+    filename === 'id_ed25519' ||
+    filename.endsWith('.pem') ||
+    filename.endsWith('.key') ||
+    filename.endsWith('.p12') ||
+    filename.endsWith('.pfx')
+  );
 }
 
-function assertReadablePath(relativePath: string): void {
+export function assertWorkspacePathAllowed(relativePath: string): void {
   const segments = relativePath.split('/');
   if (segments.some((segment) => IGNORED_DIRECTORIES.has(segment) || isSecretFilename(segment))) {
     throw new WorkspaceToolError('path_outside_workspace', 'This workspace path is not readable.');

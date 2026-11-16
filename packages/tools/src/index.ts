@@ -1,4 +1,10 @@
 export {
+  applyPatch,
+  writeFile,
+  type ApplyPatchResult,
+  type FileWriteResult,
+} from './editing-tools.js';
+export {
   listFiles,
   readFile,
   searchCode,
@@ -13,4 +19,11 @@ export {
   type Workspace,
   type WorkspaceToolErrorCode,
 } from './workspace.js';
-export type { ListFilesInput, ReadFileInput, SearchCodeInput } from './tool-input.js';
+export type {
+  ApplyPatchInput,
+  ListFilesInput,
+  ReadFileInput,
+  SearchCodeInput,
+  TextPatch,
+  WriteFileInput,
+} from './tool-input.js';
