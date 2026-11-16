@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@rivet/contracts": "workspace:*"
+    "@rivet/contracts": "workspace:*",
+    "@rivet/sandbox": "workspace:*",
+    "@rivet/tools": "workspace:*"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

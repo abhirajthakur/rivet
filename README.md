@@ -44,3 +44,7 @@ The `commit-msg` hook validates each commit message.
 Server environment variables are validated by `@rivet/config` with Zod before API or worker startup. Required values are trimmed and rejected when missing or empty. Copy `.env.example` to `.env` for local development. Node.js loads the file with its native `--env-file=.env` option; Rivet does not use `dotenv`.
 
 The API requires `NODE_ENV`, `PORT`, `DATABASE_URL`, and `REDIS_URL`. The worker requires `NODE_ENV`, `DATABASE_URL`, `REDIS_URL`, and `OLLAMA_BASE_URL`.
+
+## Agent workspace tools
+
+The task runner receives a managed `workspacePath`. Its initialization operation prepares that workspace; planning, execution, and test operations receive task-scoped repository readers, hash-checked file editors, and `runCommand`. Commands run through the Docker sandbox described in `packages/sandbox/README.md`. The workspace manager must provide a disposable directory for each task attempt.

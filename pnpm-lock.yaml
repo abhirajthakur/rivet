@@ -216,6 +216,12 @@ importers:
       '@rivet/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@rivet/sandbox':
+        specifier: workspace:*
+        version: link:../sandbox
+      '@rivet/tools':
+        specifier: workspace:*
+        version: link:../tools
 
   packages/ai: {}
 

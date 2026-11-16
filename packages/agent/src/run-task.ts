@@ -1,4 +1,15 @@
 import type { AgentTask, TaskPlan, TaskState, TaskStatus } from '@rivet/contracts';
+import { DockerSandboxRunner } from '@rivet/sandbox';
+import {
+  applyPatch,
+  listFiles,
+  openWorkspace,
+  readFile,
+  searchCode,
+  writeFile,
+  type Workspace,
+} from '@rivet/tools';
+import type { RunCommandInput, RunCommandResult } from '@rivet/sandbox';
 import { transitionTask } from './task-lifecycle.js';
 
 export interface TaskStateStore {
@@ -8,11 +19,34 @@ export interface TaskStateStore {
 }
 
 export interface AgentOperations {
-  initialize(task: AgentTask, signal?: AbortSignal): Promise<void>;
-  createPlan(task: AgentTask, signal?: AbortSignal): Promise<TaskPlan>;
-  execute(task: AgentTask, plan: TaskPlan, signal?: AbortSignal): Promise<void>;
-  runTests(task: AgentTask, plan: TaskPlan, signal?: AbortSignal): Promise<void>;
+  initialize(task: AgentTask, workspacePath: string, signal?: AbortSignal): Promise<void>;
+  createPlan(task: AgentTask, tools: AgentTaskTools, signal?: AbortSignal): Promise<TaskPlan>;
+  execute(
+    task: AgentTask,
+    plan: TaskPlan,
+    tools: AgentTaskTools,
+    signal?: AbortSignal,
+  ): Promise<void>;
+  runTests(
+    task: AgentTask,
+    plan: TaskPlan,
+    tools: AgentTaskTools,
+    signal?: AbortSignal,
+  ): Promise<void>;
   review(task: AgentTask, plan: TaskPlan, signal?: AbortSignal): Promise<void>;
+}
+
+export interface AgentTaskTools {
+  readonly workspace: Workspace;
+  readonly listFiles: (input: unknown) => ReturnType<typeof listFiles>;
+  readonly readFile: (input: unknown) => ReturnType<typeof readFile>;
+  readonly searchCode: (input: unknown) => ReturnType<typeof searchCode>;
+  readonly writeFile: (input: unknown) => ReturnType<typeof writeFile>;
+  readonly applyPatch: (input: unknown) => ReturnType<typeof applyPatch>;
+  readonly runCommand: (
+    input: RunCommandInput,
+    signal?: AbortSignal,
+  ) => Promise<RunCommandResult>;
 }
 
 export type AgentTaskRunResult =
@@ -23,6 +57,7 @@ export type AgentTaskRunResult =
 
 export interface RunAgentTaskInput {
   readonly task: AgentTask;
+  readonly workspacePath: string;
   readonly stateStore: TaskStateStore;
   readonly operations: AgentOperations;
   readonly signal?: AbortSignal;
@@ -62,20 +97,32 @@ export async function runAgentTask(input: RunAgentTaskInput): Promise<AgentTaskR
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('initializing');
-    await input.operations.initialize(task, input.signal);
+    await input.operations.initialize(task, input.workspacePath, input.signal);
+
+    const workspace = await openWorkspace(input.workspacePath);
+    const sandbox = await DockerSandboxRunner.create({ workspacePath: workspace.rootDirectory });
+    const tools: AgentTaskTools = {
+      workspace,
+      listFiles: (toolInput) => listFiles(workspace, toolInput),
+      readFile: (toolInput) => readFile(workspace, toolInput),
+      searchCode: (toolInput) => searchCode(workspace, toolInput),
+      writeFile: (toolInput) => writeFile(workspace, toolInput),
+      applyPatch: (toolInput) => applyPatch(workspace, toolInput),
+      runCommand: (toolInput, signal) => sandbox.runCommand(toolInput, signal ?? input.signal),
+    };
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('planning');
-    plan = await input.operations.createPlan(task, input.signal);
+    plan = await input.operations.createPlan(task, tools, input.signal);
     await input.stateStore.savePlan(plan);
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('executing');
-    await input.operations.execute(task, plan, input.signal);
+    await input.operations.execute(task, plan, tools, input.signal);
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('testing');
-    await input.operations.runTests(task, plan, input.signal);
+    await input.operations.runTests(task, plan, tools, input.signal);
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
     await moveTo('reviewing');

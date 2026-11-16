@@ -2,6 +2,7 @@ export {
   runAgentTask,
   type AgentOperations,
   type AgentTaskRunResult,
+  type AgentTaskTools,
   type RunAgentTaskInput,
   type TaskStateStore,
 } from './run-task.js';
