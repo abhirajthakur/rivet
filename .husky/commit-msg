@@ -1,0 +1,11 @@
+if ! command -v node >/dev/null 2>&1; then
+  for node_bin in "$HOME"/.nvm/versions/node/*/bin; do
+    if [ -x "$node_bin/node" ]; then
+      PATH="$node_bin:$PATH"
+      break
+    fi
+  done
+  export PATH
+fi
+
+./node_modules/.bin/commitlint --edit "$1"
