@@ -1,12 +1,19 @@
 import type {
   AIProvider,
   GenerateStructuredInput,
+  GenerateToolTurnInput,
+  GenerateToolTurnOutput,
   GenerateTextInput,
   GenerateTextOutput,
   ModelInfo,
 } from '../provider.js';
 import { AIProviderError } from '../provider-error.js';
-import { readJson } from './openai-compatible-provider.js';
+import { readJson } from './openai-compatible-utils.js';
+import {
+  parseGeminiToolCalls,
+  toGeminiContents,
+  toGeminiToolDeclarations,
+} from './gemini-tools.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 600_000;
@@ -22,7 +29,7 @@ interface GeminiResponse {
   readonly modelVersion?: unknown;
   readonly candidates?: readonly {
     readonly content?: {
-      readonly parts?: readonly { readonly text?: unknown }[];
+      readonly parts?: readonly { readonly text?: unknown; readonly functionCall?: unknown }[];
     };
     readonly finishReason?: unknown;
   }[];
@@ -78,7 +85,49 @@ export class GeminiProvider implements AIProvider {
     }
   }
 
-  private async generate(
+  async generateToolTurn(input: GenerateToolTurnInput): Promise<GenerateToolTurnOutput> {
+    const systemPrompt = input.messages
+      .filter((message) => message.role === 'system')
+      .map((message) => message.content)
+      .join('\n\n');
+    const response = await this.requestGenerate(
+      {
+        contents: toGeminiContents(input.messages),
+        ...(systemPrompt.length === 0
+          ? {}
+          : { systemInstruction: { parts: [{ text: systemPrompt }] } }),
+        tools: toGeminiToolDeclarations(input.tools),
+        toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+        generationConfig: {
+          temperature: boundedNumber(input.temperature, 0, 2),
+          maxOutputTokens: boundedInteger(
+            input.maxOutputTokens,
+            MAX_OUTPUT_TOKENS,
+            MAX_OUTPUT_TOKENS,
+          ),
+        },
+      },
+      input.signal,
+    );
+    const candidate = response.candidates?.[0];
+    const parts = candidate?.content?.parts;
+    const content = parts?.map((part) => (typeof part.text === 'string' ? part.text : '')).join('');
+    const toolCalls = parseGeminiToolCalls(parts);
+    if ((typeof content !== 'string' || content.length === 0) && toolCalls.length === 0) {
+      throw new AIProviderError(
+        'invalid_response',
+        'Gemini returned neither text nor function calls.',
+      );
+    }
+    return {
+      content: typeof content === 'string' && content.length > 0 ? content : null,
+      toolCalls,
+      model: typeof response.modelVersion === 'string' ? response.modelVersion : this.model,
+      finishReason: typeof candidate?.finishReason === 'string' ? candidate.finishReason : null,
+    };
+  }
+
+  private generate(
     input: GenerateTextInput,
     responseJsonSchema?: Readonly<Record<string, unknown>>,
   ): Promise<GeminiResponse> {
@@ -93,7 +142,9 @@ export class GeminiProvider implements AIProvider {
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
       ...(input.systemPrompt === undefined
         ? {}
-        : { systemInstruction: { parts: [{ text: nonEmpty(input.systemPrompt, 'systemPrompt') }] } }),
+        : {
+            systemInstruction: { parts: [{ text: nonEmpty(input.systemPrompt, 'systemPrompt') }] },
+          }),
       generationConfig: {
         temperature,
         maxOutputTokens,
@@ -103,8 +154,15 @@ export class GeminiProvider implements AIProvider {
       },
     };
 
+    return this.requestGenerate(body, input.signal);
+  }
+
+  private async requestGenerate(
+    body: unknown,
+    parentSignal?: AbortSignal,
+  ): Promise<GeminiResponse> {
     const timeoutSignal = AbortSignal.timeout(this.timeoutMs);
-    const signal = input.signal ? AbortSignal.any([input.signal, timeoutSignal]) : timeoutSignal;
+    const signal = parentSignal ? AbortSignal.any([parentSignal, timeoutSignal]) : timeoutSignal;
     let response: Response;
     try {
       response = await fetch(
@@ -120,7 +178,7 @@ export class GeminiProvider implements AIProvider {
         },
       );
     } catch (error: unknown) {
-      const timedOut = timeoutSignal.aborted && !input.signal?.aborted;
+      const timedOut = timeoutSignal.aborted && !parentSignal?.aborted;
       throw new AIProviderError(
         'request_failed',
         timedOut ? 'Gemini request timed out.' : 'Unable to reach Gemini.',
@@ -171,11 +229,7 @@ function nonEmpty(value: string, field: string): string {
   return trimmed;
 }
 
-function boundedInteger(
-  value: number | undefined,
-  defaultValue: number,
-  maximum: number,
-): number {
+function boundedInteger(value: number | undefined, defaultValue: number, maximum: number): number {
   if (value === undefined) return defaultValue;
   if (!Number.isInteger(value) || value < 1 || value > maximum) {
     throw new AIProviderError('invalid_input', `maxOutputTokens must be between 1 and ${maximum}.`);
@@ -186,7 +240,10 @@ function boundedInteger(
 function boundedNumber(value: number | undefined, minimum: number, maximum: number): number {
   if (value === undefined) return minimum;
   if (!Number.isFinite(value) || value < minimum || value > maximum) {
-    throw new AIProviderError('invalid_input', `temperature must be between ${minimum} and ${maximum}.`);
+    throw new AIProviderError(
+      'invalid_input',
+      `temperature must be between ${minimum} and ${maximum}.`,
+    );
   }
   return value;
 }

@@ -48,3 +48,5 @@ The API requires `NODE_ENV`, `PORT`, and `DATABASE_URL`. The worker requires `NO
 ## Agent workspace tools
 
 The task runner receives a managed `workspacePath` and an injected `AIProvider`. Its initialization operation prepares the workspace; planning, execution, testing, and review receive the provider, while planning, execution, and testing also receive task-scoped repository readers, hash-checked file editors, and `runCommand`. The worker selects Ollama, Groq, Gemini, or OpenRouter through `AI_PROVIDER`; OpenRouter accepts only its free router or model IDs ending in `:free`. Commands run through the Docker sandbox described in `packages/sandbox/README.md`. The workspace manager must provide a disposable directory for each task attempt.
+
+Agent operations can use `AgentTaskTools.runToolLoop` to let the selected provider request repository or sandbox actions. The loop validates tool inputs through the existing tool handlers, bounds turns, calls, time, output, and context size, and records tool-call starts and results through `TaskStateStore`. See `packages/agent/README.md` for its defaults and extension points.

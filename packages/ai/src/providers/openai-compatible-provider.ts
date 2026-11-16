@@ -1,11 +1,23 @@
 import type {
   AIProvider,
+  GenerateToolTurnInput,
+  GenerateToolTurnOutput,
   GenerateStructuredInput,
   GenerateTextInput,
   GenerateTextOutput,
   ModelInfo,
 } from '../provider.js';
 import { AIProviderError } from '../provider-error.js';
+import { parseOpenAIStyleToolCalls } from '../tool-call-utils.js';
+import {
+  isRecord,
+  providerErrorDetail,
+  readJson,
+  toOpenAIMessage,
+  toOpenAITool,
+  toTextOutput,
+  type ChatCompletionResponse,
+} from './openai-compatible-utils.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 600_000;
@@ -17,19 +29,6 @@ export interface CompatibleProviderOptions {
   readonly apiKey: string;
   readonly model: string;
   readonly timeoutMs?: number;
-}
-
-interface ChatCompletionResponse {
-  readonly model?: unknown;
-  readonly choices?: readonly {
-    readonly finish_reason?: unknown;
-    readonly message?: { readonly content?: unknown };
-  }[];
-  readonly usage?: {
-    readonly prompt_tokens?: unknown;
-    readonly completion_tokens?: unknown;
-  };
-  readonly error?: unknown;
 }
 
 export class OpenAICompatibleProvider implements AIProvider {
@@ -87,7 +86,42 @@ export class OpenAICompatibleProvider implements AIProvider {
     }
   }
 
-  private async complete(
+  async generateToolTurn(input: GenerateToolTurnInput): Promise<GenerateToolTurnOutput> {
+    const temperature = boundedNumber(input.temperature, 0, 2, 'temperature');
+    const maxTokens = boundedInteger(input.maxOutputTokens, MAX_OUTPUT_TOKENS, MAX_OUTPUT_TOKENS);
+    const response = await this.requestCompletion(
+      {
+        model: this.model,
+        messages: input.messages.map(toOpenAIMessage),
+        tools: input.tools.map(toOpenAITool),
+        tool_choice: 'auto',
+        stream: false,
+        temperature,
+        ...(this.provider === 'groq'
+          ? { max_completion_tokens: maxTokens }
+          : { max_tokens: maxTokens }),
+        ...(this.provider === 'openrouter'
+          ? { provider: { allow_fallbacks: false, require_parameters: true } }
+          : {}),
+      },
+      input.signal,
+    );
+    const choice = response.choices?.[0];
+    if (!choice?.message) {
+      throw new AIProviderError(
+        'invalid_response',
+        `${this.provider} returned an empty completion.`,
+      );
+    }
+    return {
+      content: typeof choice.message.content === 'string' ? choice.message.content : null,
+      toolCalls: parseOpenAIStyleToolCalls(choice.message.tool_calls, this.provider),
+      model: typeof response.model === 'string' ? response.model : this.model,
+      finishReason: typeof choice.finish_reason === 'string' ? choice.finish_reason : null,
+    };
+  }
+
+  private complete(
     input: GenerateTextInput,
     schema?: Readonly<Record<string, unknown>>,
     schemaName?: string,
@@ -101,8 +135,41 @@ export class OpenAICompatibleProvider implements AIProvider {
     }
     messages.push({ role: 'user', content: userPrompt });
 
+    return this.requestCompletion(
+      {
+        model: this.model,
+        messages,
+        stream: false,
+        temperature,
+        max_tokens: maxTokens,
+        ...(schema === undefined
+          ? {}
+          : {
+              response_format: {
+                type: 'json_schema',
+                json_schema: {
+                  name: schemaName,
+                  strict: true,
+                  schema,
+                },
+              },
+            }),
+        ...(this.provider === 'openrouter'
+          ? {
+              provider: { allow_fallbacks: false, ...(schema ? { require_parameters: true } : {}) },
+            }
+          : {}),
+      },
+      input.signal,
+    );
+  }
+
+  private async requestCompletion(
+    body: unknown,
+    parentSignal?: AbortSignal,
+  ): Promise<ChatCompletionResponse> {
     const timeoutSignal = AbortSignal.timeout(this.timeoutMs);
-    const signal = input.signal ? AbortSignal.any([input.signal, timeoutSignal]) : timeoutSignal;
+    const signal = parentSignal ? AbortSignal.any([parentSignal, timeoutSignal]) : timeoutSignal;
     let response: Response;
     try {
       response = await fetch(this.endpoint, {
@@ -111,32 +178,11 @@ export class OpenAICompatibleProvider implements AIProvider {
           authorization: `Bearer ${this.apiKey}`,
           'content-type': 'application/json',
         },
-        body: JSON.stringify({
-          model: this.model,
-          messages,
-          stream: false,
-          temperature,
-          max_tokens: maxTokens,
-          ...(schema === undefined
-            ? {}
-            : {
-                response_format: {
-                  type: 'json_schema',
-                  json_schema: {
-                    name: schemaName,
-                    strict: true,
-                    schema,
-                  },
-                },
-              }),
-          ...(this.provider === 'openrouter'
-            ? { provider: { allow_fallbacks: false, ...(schema ? { require_parameters: true } : {}) } }
-            : {}),
-        }),
+        body: JSON.stringify(body),
         signal,
       });
     } catch (error: unknown) {
-      const timedOut = timeoutSignal.aborted && !input.signal?.aborted;
+      const timedOut = timeoutSignal.aborted && !parentSignal?.aborted;
       throw new AIProviderError(
         'request_failed',
         timedOut ? `${this.provider} request timed out.` : `Unable to reach ${this.provider}.`,
@@ -152,48 +198,13 @@ export class OpenAICompatibleProvider implements AIProvider {
       );
     }
     if (!isRecord(payload)) {
-      throw new AIProviderError('invalid_response', `${this.provider} returned an invalid response.`);
+      throw new AIProviderError(
+        'invalid_response',
+        `${this.provider} returned an invalid response.`,
+      );
     }
     return payload as ChatCompletionResponse;
   }
-}
-
-export async function readJson(response: Response, provider: string): Promise<unknown> {
-  try {
-    return (await response.json()) as unknown;
-  } catch (error: unknown) {
-    throw new AIProviderError('invalid_response', `${provider} returned invalid JSON.`, {
-      cause: error,
-    });
-  }
-}
-
-export function providerErrorDetail(payload: unknown): string {
-  if (!isRecord(payload)) return '.';
-  const error = payload['error'];
-  if (typeof error === 'string') return `: ${error}`;
-  if (isRecord(error) && typeof error['message'] === 'string') {
-    return `: ${error['message']}`;
-  }
-  return '.';
-}
-
-export function toTextOutput(
-  response: ChatCompletionResponse,
-  fallbackModel: string,
-): GenerateTextOutput {
-  const choice = response.choices?.[0];
-  const content = choice?.message?.content;
-  if (typeof content !== 'string') {
-    throw new AIProviderError('invalid_response', 'Chat response did not include message text.');
-  }
-  return {
-    text: content,
-    model: typeof response.model === 'string' ? response.model : fallbackModel,
-    finishReason: typeof choice.finish_reason === 'string' ? choice.finish_reason : null,
-    inputTokens: finiteNumberOrNull(response.usage?.prompt_tokens),
-    outputTokens: finiteNumberOrNull(response.usage?.completion_tokens),
-  };
 }
 
 function isFreeOpenRouterModel(model: string): boolean {
@@ -208,11 +219,7 @@ function nonEmpty(value: string, field: string): string {
   return trimmed;
 }
 
-function boundedInteger(
-  value: number | undefined,
-  defaultValue: number,
-  maximum: number,
-): number {
+function boundedInteger(value: number | undefined, defaultValue: number, maximum: number): number {
   if (value === undefined) return defaultValue;
   if (!Number.isInteger(value) || value < 1 || value > maximum) {
     throw new AIProviderError('invalid_input', `maxOutputTokens must be between 1 and ${maximum}.`);
@@ -220,18 +227,18 @@ function boundedInteger(
   return value;
 }
 
-function boundedNumber(value: number | undefined, minimum: number, maximum: number, field: string): number {
+function boundedNumber(
+  value: number | undefined,
+  minimum: number,
+  maximum: number,
+  field: string,
+): number {
   if (value === undefined) return minimum;
   if (!Number.isFinite(value) || value < minimum || value > maximum) {
-    throw new AIProviderError('invalid_input', `${field} must be between ${minimum} and ${maximum}.`);
+    throw new AIProviderError(
+      'invalid_input',
+      `${field} must be between ${minimum} and ${maximum}.`,
+    );
   }
   return value;
-}
-
-function finiteNumberOrNull(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

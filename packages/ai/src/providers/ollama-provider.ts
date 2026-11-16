@@ -1,11 +1,14 @@
 import {
   type AIProvider,
+  type GenerateToolTurnInput,
+  type GenerateToolTurnOutput,
   type GenerateStructuredInput,
   type GenerateTextInput,
   type GenerateTextOutput,
   type ModelInfo,
 } from '../provider.js';
 import { AIProviderError } from '../provider-error.js';
+import { parseOllamaToolCalls, toOllamaMessage, toOllamaTool } from './ollama-tools.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 600_000;
@@ -19,7 +22,7 @@ export interface OllamaProviderOptions {
 
 interface OllamaChatResponse {
   readonly model?: unknown;
-  readonly message?: { readonly content?: unknown };
+  readonly message?: { readonly content?: unknown; readonly tool_calls?: unknown };
   readonly done_reason?: unknown;
   readonly prompt_eval_count?: unknown;
   readonly eval_count?: unknown;
@@ -77,7 +80,41 @@ export class OllamaProvider implements AIProvider {
     }
   }
 
-  private async chat(
+  async generateToolTurn(input: GenerateToolTurnInput): Promise<GenerateToolTurnOutput> {
+    const response = await this.requestChat(
+      {
+        model: this.model,
+        messages: input.messages.map(toOllamaMessage),
+        tools: input.tools.map(toOllamaTool),
+        stream: false,
+        options: {
+          temperature: boundedNumber(input.temperature, 0, 2, 'temperature'),
+          num_predict: boundedInteger(
+            input.maxOutputTokens,
+            MAX_OUTPUT_TOKENS,
+            MAX_OUTPUT_TOKENS,
+            'maxOutputTokens',
+          ),
+        },
+      },
+      input.signal,
+    );
+    const message = response.message;
+    if (!message || (typeof message.content !== 'string' && message.content !== undefined)) {
+      throw new AIProviderError(
+        'invalid_response',
+        'Ollama returned a malformed assistant message.',
+      );
+    }
+    return {
+      content: typeof message.content === 'string' ? message.content : null,
+      toolCalls: parseOllamaToolCalls(message.tool_calls),
+      model: typeof response.model === 'string' ? response.model : this.model,
+      finishReason: typeof response.done_reason === 'string' ? response.done_reason : null,
+    };
+  }
+
+  private chat(
     input: GenerateTextInput,
     format?: Readonly<Record<string, unknown>>,
   ): Promise<OllamaChatResponse> {
@@ -95,24 +132,34 @@ export class OllamaProvider implements AIProvider {
     }
     messages.push({ role: 'user', content: userPrompt });
 
+    return this.requestChat(
+      {
+        model: this.model,
+        messages,
+        stream: false,
+        ...(format === undefined ? {} : { format }),
+        options: { temperature, num_predict: maxOutputTokens },
+      },
+      input.signal,
+    );
+  }
+
+  private async requestChat(
+    body: unknown,
+    parentSignal?: AbortSignal,
+  ): Promise<OllamaChatResponse> {
     const timeoutSignal = AbortSignal.timeout(this.timeoutMs);
-    const signal = input.signal ? AbortSignal.any([input.signal, timeoutSignal]) : timeoutSignal;
+    const signal = parentSignal ? AbortSignal.any([parentSignal, timeoutSignal]) : timeoutSignal;
     let response: Response;
     try {
       response = await fetch(this.chatUrl, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          model: this.model,
-          messages,
-          stream: false,
-          ...(format === undefined ? {} : { format }),
-          options: { temperature, num_predict: maxOutputTokens },
-        }),
+        body: JSON.stringify(body),
         signal,
       });
     } catch (error: unknown) {
-      const timedOut = timeoutSignal.aborted && !input.signal?.aborted;
+      const timedOut = timeoutSignal.aborted && !parentSignal?.aborted;
       throw new AIProviderError(
         'request_failed',
         timedOut ? 'Ollama request timed out.' : 'Unable to reach the configured Ollama server.',
@@ -131,9 +178,7 @@ export class OllamaProvider implements AIProvider {
 
     if (!response.ok) {
       const serverMessage =
-        isRecord(payload) && typeof payload['error'] === 'string'
-          ? ` ${payload['error']}`
-          : '';
+        isRecord(payload) && typeof payload['error'] === 'string' ? ` ${payload['error']}` : '';
       throw new AIProviderError(
         'request_failed',
         `Ollama request failed with HTTP ${response.status}.${serverMessage}`,
@@ -215,7 +260,10 @@ function boundedNumber(
 ): number {
   if (value === undefined) return minimum;
   if (!Number.isFinite(value) || value < minimum || value > maximum) {
-    throw new AIProviderError('invalid_input', `${field} must be between ${minimum} and ${maximum}.`);
+    throw new AIProviderError(
+      'invalid_input',
+      `${field} must be between ${minimum} and ${maximum}.`,
+    );
   }
   return value;
 }

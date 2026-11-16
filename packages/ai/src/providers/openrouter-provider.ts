@@ -1,5 +1,11 @@
 import { OpenAICompatibleProvider } from './openai-compatible-provider.js';
-import type { AIProvider, GenerateStructuredInput, GenerateTextInput } from '../provider.js';
+import type {
+  AIProvider,
+  GenerateStructuredInput,
+  GenerateTextInput,
+  GenerateToolTurnInput,
+  GenerateToolTurnOutput,
+} from '../provider.js';
 import type { GenerateTextOutput, ModelInfo } from '../provider.js';
 
 export interface OpenRouterProviderOptions {
@@ -31,5 +37,9 @@ export class OpenRouterProvider implements AIProvider {
 
   generateStructured<T>(input: GenerateStructuredInput<T>): Promise<T> {
     return this.provider.generateStructured(input);
+  }
+
+  generateToolTurn(input: GenerateToolTurnInput): Promise<GenerateToolTurnOutput> {
+    return this.provider.generateToolTurn(input);
   }
 }

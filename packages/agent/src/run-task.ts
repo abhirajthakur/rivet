@@ -10,12 +10,25 @@ import {
   writeFile,
   type Workspace,
 } from '@rivet/tools';
-import type { RunCommandInput, RunCommandResult } from '@rivet/sandbox';
+import type { RunCommandResult } from '@rivet/sandbox';
+import { runAgentToolLoop } from './tool-loop.js';
+import type {
+  AgentTaskToolLoopInput,
+  AgentToolCallEvent,
+  AgentToolCallStartEvent,
+  AgentToolLoopResult,
+} from './tool-loop.js';
 import { transitionTask } from './task-lifecycle.js';
 
 export interface TaskStateStore {
   saveState(state: TaskState): Promise<void>;
   savePlan(plan: TaskPlan): Promise<void>;
+  saveToolCallStarted(
+    taskId: string,
+    attempt: number,
+    event: AgentToolCallStartEvent,
+  ): Promise<void>;
+  saveToolCall(taskId: string, attempt: number, event: AgentToolCallEvent): Promise<void>;
   isCancellationRequested(taskId: string): Promise<boolean>;
 }
 
@@ -56,10 +69,8 @@ export interface AgentTaskTools {
   readonly searchCode: (input: unknown) => ReturnType<typeof searchCode>;
   readonly writeFile: (input: unknown) => ReturnType<typeof writeFile>;
   readonly applyPatch: (input: unknown) => ReturnType<typeof applyPatch>;
-  readonly runCommand: (
-    input: RunCommandInput,
-    signal?: AbortSignal,
-  ) => Promise<RunCommandResult>;
+  readonly runCommand: (input: unknown, signal?: AbortSignal) => Promise<RunCommandResult>;
+  readonly runToolLoop: (input: AgentTaskToolLoopInput) => Promise<AgentToolLoopResult>;
 }
 
 export type AgentTaskRunResult =
@@ -115,14 +126,30 @@ export async function runAgentTask(input: RunAgentTaskInput): Promise<AgentTaskR
 
     const workspace = await openWorkspace(input.workspacePath);
     const sandbox = await DockerSandboxRunner.create({ workspacePath: workspace.rootDirectory });
+    const toolSet = {
+      listFiles: (toolInput: unknown) => listFiles(workspace, toolInput),
+      readFile: (toolInput: unknown) => readFile(workspace, toolInput),
+      searchCode: (toolInput: unknown) => searchCode(workspace, toolInput),
+      writeFile: (toolInput: unknown) => writeFile(workspace, toolInput),
+      applyPatch: (toolInput: unknown) => applyPatch(workspace, toolInput),
+      runCommand: (toolInput: unknown, signal?: AbortSignal) =>
+        sandbox.runCommand(toolInput, signal ?? input.signal),
+    };
     const tools: AgentTaskTools = {
       workspace,
-      listFiles: (toolInput) => listFiles(workspace, toolInput),
-      readFile: (toolInput) => readFile(workspace, toolInput),
-      searchCode: (toolInput) => searchCode(workspace, toolInput),
-      writeFile: (toolInput) => writeFile(workspace, toolInput),
-      applyPatch: (toolInput) => applyPatch(workspace, toolInput),
-      runCommand: (toolInput, signal) => sandbox.runCommand(toolInput, signal ?? input.signal),
+      ...toolSet,
+      runToolLoop: (loopInput) =>
+        runAgentToolLoop({
+          ...loopInput,
+          provider: input.provider,
+          tools: toolSet,
+          ...((loopInput.signal ?? input.signal)
+            ? { signal: loopInput.signal ?? input.signal }
+            : {}),
+          onToolCallStart: (event) =>
+            input.stateStore.saveToolCallStarted(task.id, task.attempt, event),
+          onToolCall: (event) => input.stateStore.saveToolCall(task.id, task.attempt, event),
+        }),
     };
 
     if (await cancelIfRequested()) return { outcome: 'cancelled', task };
