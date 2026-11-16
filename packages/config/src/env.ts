@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const nonEmptyUrl = z.string().trim().min(1, 'must not be empty').url();
+const nonEmptyUrl = z.string().trim().min(1, 'must not be empty').pipe(z.url());
 const nodeEnvironment = z.enum(['development', 'test', 'production']);
 
 export const apiEnvSchema = z.object({
