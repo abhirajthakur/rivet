@@ -4,8 +4,8 @@ import {
   type GenerateTextInput,
   type GenerateTextOutput,
   type ModelInfo,
-} from './provider.js';
-import { AIProviderError } from './provider-error.js';
+} from '../provider.js';
+import { AIProviderError } from '../provider-error.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 600_000;

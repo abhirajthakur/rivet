@@ -4,8 +4,8 @@ import type {
   GenerateTextInput,
   GenerateTextOutput,
   ModelInfo,
-} from './provider.js';
-import { AIProviderError } from './provider-error.js';
+} from '../provider.js';
+import { AIProviderError } from '../provider-error.js';
 import { readJson } from './openai-compatible-provider.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;

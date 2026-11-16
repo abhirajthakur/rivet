@@ -1,20 +1,20 @@
 import { OpenAICompatibleProvider } from './openai-compatible-provider.js';
-import type { AIProvider, GenerateStructuredInput, GenerateTextInput } from './provider.js';
-import type { GenerateTextOutput, ModelInfo } from './provider.js';
+import type { AIProvider, GenerateStructuredInput, GenerateTextInput } from '../provider.js';
+import type { GenerateTextOutput, ModelInfo } from '../provider.js';
 
-export interface OpenRouterProviderOptions {
+export interface GroqProviderOptions {
   readonly apiKey: string;
   readonly model: string;
   readonly timeoutMs?: number;
 }
 
-export class OpenRouterProvider implements AIProvider {
+export class GroqProvider implements AIProvider {
   private readonly provider: OpenAICompatibleProvider;
 
-  constructor(options: OpenRouterProviderOptions) {
+  constructor(options: GroqProviderOptions) {
     this.provider = new OpenAICompatibleProvider({
-      provider: 'openrouter',
-      endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+      provider: 'groq',
+      endpoint: 'https://api.groq.com/openai/v1/chat/completions',
       apiKey: options.apiKey,
       model: options.model,
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
