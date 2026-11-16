@@ -24,37 +24,36 @@ const MAX_TIMEOUT_MS = 600_000;
 const MAX_OUTPUT_TOKENS = 32_768;
 
 export type CompatibleProviderOptions = {
-  provider: 'groq' | 'openrouter';
+  providerName: string;
   endpoint: string;
   apiKey: string;
   model: string;
   timeoutMs?: number;
+  adaptRequest?: (
+    kind: 'text' | 'structured' | 'tool_call',
+    request: Record<string, unknown>,
+  ) => Record<string, unknown>;
 };
 
 export class OpenAICompatibleProvider implements AIProvider {
-  private readonly provider: 'groq' | 'openrouter';
+  private readonly providerName: string;
   private readonly endpoint: URL;
   private readonly apiKey: string;
   private readonly model: string;
   private readonly timeoutMs: number;
+  private readonly adaptRequest?: CompatibleProviderOptions['adaptRequest'];
 
   constructor(options: CompatibleProviderOptions) {
-    this.provider = options.provider;
+    this.providerName = nonEmpty(options.providerName, 'providerName');
     this.endpoint = new URL(options.endpoint);
     this.apiKey = nonEmpty(options.apiKey, 'apiKey');
     this.model = nonEmpty(options.model, 'model');
     this.timeoutMs = boundedInteger(options.timeoutMs, DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
-
-    if (this.provider === 'openrouter' && !isFreeOpenRouterModel(this.model)) {
-      throw new AIProviderError(
-        'invalid_input',
-        'OpenRouter model must be openrouter/free or a model ID ending in :free.',
-      );
-    }
+    this.adaptRequest = options.adaptRequest;
   }
 
   getModelInfo(): ModelInfo {
-    return { provider: this.provider, model: this.model, execution: 'hosted' };
+    return { provider: this.providerName, model: this.model, execution: 'hosted' };
   }
 
   async generateText(input: GenerateTextInput): Promise<GenerateTextOutput> {
@@ -70,7 +69,7 @@ export class OpenAICompatibleProvider implements AIProvider {
     } catch (error: unknown) {
       throw new AIProviderError(
         'invalid_structured_output',
-        `${this.provider} returned content that was not valid JSON.`,
+        `${this.providerName} returned content that was not valid JSON.`,
         { cause: error },
       );
     }
@@ -80,7 +79,7 @@ export class OpenAICompatibleProvider implements AIProvider {
     } catch (error: unknown) {
       throw new AIProviderError(
         'invalid_structured_output',
-        `${this.provider} output did not match the ${input.schema.name} schema.`,
+        `${this.providerName} output did not match the ${input.schema.name} schema.`,
         { cause: error },
       );
     }
@@ -90,32 +89,27 @@ export class OpenAICompatibleProvider implements AIProvider {
     const temperature = boundedNumber(input.temperature, 0, 2, 'temperature');
     const maxTokens = boundedInteger(input.maxOutputTokens, MAX_OUTPUT_TOKENS, MAX_OUTPUT_TOKENS);
     const response = await this.requestCompletion(
-      {
+      this.buildRequest('tool_call', {
         model: this.model,
         messages: input.messages.map(toOpenAIMessage),
         tools: input.tools.map(toOpenAITool),
         tool_choice: 'auto',
         stream: false,
         temperature,
-        ...(this.provider === 'groq'
-          ? { max_completion_tokens: maxTokens }
-          : { max_tokens: maxTokens }),
-        ...(this.provider === 'openrouter'
-          ? { provider: { allow_fallbacks: false, require_parameters: true } }
-          : {}),
-      },
+        max_tokens: maxTokens,
+      }),
       input.signal,
     );
     const choice = response.choices?.[0];
     if (!choice?.message) {
       throw new AIProviderError(
         'invalid_response',
-        `${this.provider} returned an empty completion.`,
+        `${this.providerName} returned an empty completion.`,
       );
     }
     return {
       content: typeof choice.message.content === 'string' ? choice.message.content : null,
-      toolCalls: parseOpenAIStyleToolCalls(choice.message.tool_calls, this.provider),
+      toolCalls: parseOpenAIStyleToolCalls(choice.message.tool_calls, this.providerName),
       model: typeof response.model === 'string' ? response.model : this.model,
       finishReason: typeof choice.finish_reason === 'string' ? choice.finish_reason : null,
     };
@@ -136,7 +130,7 @@ export class OpenAICompatibleProvider implements AIProvider {
     messages.push({ role: 'user', content: userPrompt });
 
     return this.requestCompletion(
-      {
+      this.buildRequest(schema === undefined ? 'text' : 'structured', {
         model: this.model,
         messages,
         stream: false,
@@ -154,14 +148,16 @@ export class OpenAICompatibleProvider implements AIProvider {
                 },
               },
             }),
-        ...(this.provider === 'openrouter'
-          ? {
-              provider: { allow_fallbacks: false, ...(schema ? { require_parameters: true } : {}) },
-            }
-          : {}),
-      },
+      }),
       input.signal,
     );
+  }
+
+  private buildRequest(
+    kind: 'text' | 'structured' | 'tool_call',
+    request: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return this.adaptRequest?.(kind, request) ?? request;
   }
 
   private async requestCompletion(
@@ -185,30 +181,28 @@ export class OpenAICompatibleProvider implements AIProvider {
       const timedOut = timeoutSignal.aborted && !parentSignal?.aborted;
       throw new AIProviderError(
         'request_failed',
-        timedOut ? `${this.provider} request timed out.` : `Unable to reach ${this.provider}.`,
+        timedOut
+          ? `${this.providerName} request timed out.`
+          : `Unable to reach ${this.providerName}.`,
         { cause: error },
       );
     }
 
-    const payload: unknown = await readJson(response, this.provider);
+    const payload: unknown = await readJson(response, this.providerName);
     if (!response.ok) {
       throw new AIProviderError(
         'request_failed',
-        `${this.provider} request failed with HTTP ${response.status}${providerErrorDetail(payload)}`,
+        `${this.providerName} request failed with HTTP ${response.status}${providerErrorDetail(payload)}`,
       );
     }
     if (!isRecord(payload)) {
       throw new AIProviderError(
         'invalid_response',
-        `${this.provider} returned an invalid response.`,
+        `${this.providerName} returned an invalid response.`,
       );
     }
     return payload as ChatCompletionResponse;
   }
-}
-
-function isFreeOpenRouterModel(model: string): boolean {
-  return model === 'openrouter/free' || model.endsWith(':free');
 }
 
 function nonEmpty(value: string, field: string): string {

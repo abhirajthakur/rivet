@@ -19,10 +19,15 @@ export class GroqProvider implements AIProvider {
 
   constructor(options: GroqProviderOptions) {
     this.provider = new OpenAICompatibleProvider({
-      provider: 'groq',
+      providerName: 'groq',
       endpoint: 'https://api.groq.com/openai/v1/chat/completions',
       apiKey: options.apiKey,
       model: options.model,
+      adaptRequest: (kind, request) => {
+        if (kind !== 'tool_call') return request;
+        const { max_tokens, ...toolRequest } = request;
+        return { ...toolRequest, max_completion_tokens: max_tokens };
+      },
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     });
   }
