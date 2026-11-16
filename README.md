@@ -43,8 +43,8 @@ The `commit-msg` hook validates each commit message.
 
 Server environment variables are validated by `@rivet/config` with Zod before API or worker startup. Required values are trimmed and rejected when missing or empty. Copy `.env.example` to `.env` for local development. Node.js loads the file with its native `--env-file=.env` option; Rivet does not use `dotenv`.
 
-The API requires `NODE_ENV`, `PORT`, and `DATABASE_URL`. The worker requires `NODE_ENV`, `DATABASE_URL`, `REDIS_URL`, `OLLAMA_BASE_URL`, and `OLLAMA_MODEL`.
+The API requires `NODE_ENV`, `PORT`, and `DATABASE_URL`. The worker requires `NODE_ENV`, `DATABASE_URL`, `REDIS_URL`, and `AI_PROVIDER`, plus the model and credential settings for the selected provider.
 
 ## Agent workspace tools
 
-The task runner receives a managed `workspacePath` and an injected `AIProvider`. Its initialization operation prepares the workspace; planning, execution, testing, and review receive the provider, while planning, execution, and testing also receive task-scoped repository readers, hash-checked file editors, and `runCommand`. The worker constructs the Ollama adapter from `OLLAMA_BASE_URL` and `OLLAMA_MODEL`. Commands run through the Docker sandbox described in `packages/sandbox/README.md`. The workspace manager must provide a disposable directory for each task attempt.
+The task runner receives a managed `workspacePath` and an injected `AIProvider`. Its initialization operation prepares the workspace; planning, execution, testing, and review receive the provider, while planning, execution, and testing also receive task-scoped repository readers, hash-checked file editors, and `runCommand`. The worker selects Ollama, Groq, Gemini, or OpenRouter through `AI_PROVIDER`; OpenRouter accepts only its free router or model IDs ending in `:free`. Commands run through the Docker sandbox described in `packages/sandbox/README.md`. The workspace manager must provide a disposable directory for each task attempt.
