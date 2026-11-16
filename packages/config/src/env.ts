@@ -10,8 +10,8 @@ const workerCommon = {
 };
 
 export const apiEnvSchema = z.object({
-  NODE_ENV: nodeEnvironment,
-  PORT: z.coerce.number().int().min(1).max(65_535),
+  NODE_ENV: nodeEnvironment.default('development'),
+  PORT: z.coerce.number().int().min(1).max(65_535).default(8000),
   DATABASE_URL: nonEmptyUrl,
 });
 
