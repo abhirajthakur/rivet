@@ -4,15 +4,15 @@
   "private": true,
   "engines": {
     "node": ">=22.0.0",
-    "pnpm": ">=12.21.0"
+    "pnpm": ">=10.34.9"
   },
   "scripts": {
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "typecheck": "pnpm --recursive --if-present typecheck",
-    "check": "pnpm lint && pnpm format:check && pnpm typecheck",
+    "lint": "corepack pnpm exec eslint .",
+    "lint:fix": "corepack pnpm exec eslint . --fix",
+    "format": "corepack pnpm exec prettier --write .",
+    "format:check": "corepack pnpm exec prettier --check .",
+    "typecheck": "corepack pnpm --recursive --if-present typecheck",
+    "check": "corepack pnpm lint && corepack pnpm format:check && corepack pnpm typecheck",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -26,5 +26,6 @@
     "prettier": "^3.10.1",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.72.2"
-  }
+  },
+  "packageManager": "pnpm@10.34.9"
 }
