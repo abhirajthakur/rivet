@@ -4,7 +4,7 @@ Rivet is a local-first AI software engineering agent. It inspects a repository, 
 
 ## Repository layout
 
-- `apps/api` — Express HTTP API (next implementation milestone)
+- `apps/api` — Express HTTP API with startup validation, health checks, and graceful shutdown
 - `apps/worker` — background task worker (later milestone)
 - `packages/agent` — single-agent orchestration and lifecycle
 - `packages/ai` — provider abstraction and self-hosted model adapters
